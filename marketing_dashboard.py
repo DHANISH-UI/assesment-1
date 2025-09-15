@@ -56,7 +56,6 @@ def load_data():
         # Calculate additional metrics
         marketing_df['ctr'] = (marketing_df['clicks'] / marketing_df['impression'] * 100).round(2)
         marketing_df['cpc'] = (marketing_df['spend'] / marketing_df['clicks']).round(2)
-        marketing_df['roas'] = (marketing_df['attributed revenue'] / marketing_df['spend']).round(2)
         marketing_df['cpm'] = (marketing_df['spend'] / marketing_df['impression'] * 1000).round(2)
         
         # Aggregate marketing data by date
@@ -69,7 +68,6 @@ def load_data():
         
         daily_marketing['ctr'] = (daily_marketing['clicks'] / daily_marketing['impression'] * 100).round(2)
         daily_marketing['cpc'] = (daily_marketing['spend'] / daily_marketing['clicks']).round(2)
-        daily_marketing['roas'] = (daily_marketing['attributed revenue'] / daily_marketing['spend']).round(2)
         
         # Merge business and marketing data
         combined_df = pd.merge(business_df, daily_marketing, on='date', how='left')
@@ -107,11 +105,11 @@ def create_kpi_cards(combined_df):
         )
     
     with col3:
-        avg_roas = combined_df['roas'].mean()
+        avg_ctr = combined_df['ctr'].mean()
         st.metric(
-            label="📈 Average ROAS",
-            value=f"{avg_roas:.2f}x",
-            delta=f"ROI: {(avg_roas-1)*100:.1f}%"
+            label="🎯 Average CTR",
+            value=f"{avg_ctr:.2f}%",
+            delta=f"Click Rate"
         )
     
     with col4:
@@ -123,34 +121,129 @@ def create_kpi_cards(combined_df):
         )
 
 def create_revenue_trend_chart(combined_df):
-    """Create revenue trend chart"""
-    fig = go.Figure()
+    """Create enhanced revenue trend chart with better visualization"""
+    # Create subplots for better comparison
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=('📈 Revenue Trends Over Time', '📊 Daily Revenue Comparison'),
+        specs=[[{"type": "scatter"}], [{"type": "bar"}]],
+        vertical_spacing=0.2,
+        row_heights=[0.6, 0.4]
+    )
     
-    fig.add_trace(go.Scatter(
-        x=combined_df['date'],
-        y=combined_df['total revenue'],
-        mode='lines+markers',
-        name='Total Revenue',
-        line=dict(color='#1f77b4', width=3),
-        marker=dict(size=6)
-    ))
+    # Line chart for revenue trends
+    fig.add_trace(
+        go.Scatter(
+            x=combined_df['date'],
+            y=combined_df['total revenue'],
+            mode='lines+markers',
+            name='Total Revenue',
+            line=dict(color='#3b82f6', width=3),
+            marker=dict(size=8, color='#3b82f6'),
+            hovertemplate='<b>Total Revenue</b><br>Date: %{x}<br>Revenue: $%{y:,.0f}<extra></extra>'
+        ),
+        row=1, col=1
+    )
     
-    fig.add_trace(go.Scatter(
-        x=combined_df['date'],
-        y=combined_df['attributed revenue'],
-        mode='lines+markers',
-        name='Attributed Revenue',
-        line=dict(color='#ff7f0e', width=3),
-        marker=dict(size=6)
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=combined_df['date'],
+            y=combined_df['attributed revenue'],
+            mode='lines+markers',
+            name='Attributed Revenue',
+            line=dict(color='#f59e0b', width=3, dash='dash'),
+            marker=dict(size=8, color='#f59e0b'),
+            hovertemplate='<b>Attributed Revenue</b><br>Date: %{x}<br>Revenue: $%{y:,.0f}<extra></extra>'
+        ),
+        row=1, col=1
+    )
     
+    # Bar chart for daily comparison
+    fig.add_trace(
+        go.Bar(
+            x=combined_df['date'],
+            y=combined_df['total revenue'],
+            name='Total Revenue',
+            marker_color='#3b82f6',
+            opacity=0.7,
+            hovertemplate='<b>Total Revenue</b><br>Date: %{x}<br>Revenue: $%{y:,.0f}<extra></extra>'
+        ),
+        row=2, col=1
+    )
+    
+    fig.add_trace(
+        go.Bar(
+            x=combined_df['date'],
+            y=combined_df['attributed revenue'],
+            name='Attributed Revenue',
+            marker_color='#f59e0b',
+            opacity=0.7,
+            hovertemplate='<b>Attributed Revenue</b><br>Date: %{x}<br>Revenue: $%{y:,.0f}<extra></extra>'
+        ),
+        row=2, col=1
+    )
+    
+    # Update layout
     fig.update_layout(
-        title="Revenue Trends Over Time",
-        xaxis_title="Date",
-        yaxis_title="Revenue ($)",
-        hovermode='x unified',
-        height=400,
-        showlegend=True
+        height=850,
+        showlegend=True,
+        plot_bgcolor='#334155',
+        paper_bgcolor='#334155',
+        font=dict(color='#f1f5f9', size=12),
+        title=dict(
+            text="💰 Revenue Performance Analysis",
+            font=dict(size=18, color='#f1f5f9'),
+            x=0.5,
+            y=0.99,
+            xanchor='center',
+            yanchor='top'
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.03,
+            xanchor="right",
+            x=1,
+            font=dict(color='#cbd5e1')
+        ),
+        margin=dict(l=50, r=50, t=140, b=50)
+    )
+    
+    # Update axes
+    fig.update_xaxes(
+        title_text="Date",
+        title_font=dict(color='#cbd5e1'),
+        tickfont=dict(color='#94a3b8'),
+        gridcolor='#475569',
+        showgrid=True,
+        row=1, col=1
+    )
+    fig.update_yaxes(
+        title_text="Revenue ($)",
+        title_font=dict(color='#cbd5e1'),
+        tickfont=dict(color='#94a3b8'),
+        gridcolor='#475569',
+        showgrid=True,
+        tickformat='$,.0f',
+        row=1, col=1
+    )
+    
+    fig.update_xaxes(
+        title_text="Date",
+        title_font=dict(color='#cbd5e1'),
+        tickfont=dict(color='#94a3b8'),
+        gridcolor='#475569',
+        showgrid=True,
+        row=2, col=1
+    )
+    fig.update_yaxes(
+        title_text="Revenue ($)",
+        title_font=dict(color='#cbd5e1'),
+        tickfont=dict(color='#94a3b8'),
+        gridcolor='#475569',
+        showgrid=True,
+        tickformat='$,.0f',
+        row=2, col=1
     )
     
     return fig
@@ -164,12 +257,12 @@ def create_platform_performance_chart(marketing_df):
         'clicks': 'sum'
     }).reset_index()
     
-    platform_metrics['roas'] = (platform_metrics['attributed revenue'] / platform_metrics['spend']).round(2)
     platform_metrics['ctr'] = (platform_metrics['clicks'] / platform_metrics['impression'] * 100).round(2)
+    platform_metrics['cpc'] = (platform_metrics['spend'] / platform_metrics['clicks']).round(2)
     
     fig = make_subplots(
         rows=2, cols=2,
-        subplot_titles=('Spend by Platform', 'Revenue by Platform', 'ROAS by Platform', 'CTR by Platform'),
+        subplot_titles=('Spend by Platform', 'Revenue by Platform', 'CTR by Platform', 'CPC by Platform'),
         specs=[[{"type": "bar"}, {"type": "bar"}],
                [{"type": "bar"}, {"type": "bar"}]]
     )
@@ -186,15 +279,15 @@ def create_platform_performance_chart(marketing_df):
         row=1, col=2
     )
     
-    # ROAS
+    # CTR
     fig.add_trace(
-        go.Bar(x=platform_metrics['platform'], y=platform_metrics['roas'], name='ROAS', marker_color='#2ca02c'),
+        go.Bar(x=platform_metrics['platform'], y=platform_metrics['ctr'], name='CTR', marker_color='#2ca02c'),
         row=2, col=1
     )
     
-    # CTR
+    # CPC
     fig.add_trace(
-        go.Bar(x=platform_metrics['platform'], y=platform_metrics['ctr'], name='CTR', marker_color='#d62728'),
+        go.Bar(x=platform_metrics['platform'], y=platform_metrics['cpc'], name='CPC', marker_color='#d62728'),
         row=2, col=2
     )
     
@@ -203,13 +296,13 @@ def create_platform_performance_chart(marketing_df):
     fig.update_xaxes(title_text="Platform", row=2, col=2)
     fig.update_yaxes(title_text="Spend ($)", row=1, col=1)
     fig.update_yaxes(title_text="Revenue ($)", row=1, col=2)
-    fig.update_yaxes(title_text="ROAS", row=2, col=1)
-    fig.update_yaxes(title_text="CTR (%)", row=2, col=2)
+    fig.update_yaxes(title_text="CTR (%)", row=2, col=1)
+    fig.update_yaxes(title_text="CPC ($)", row=2, col=2)
     
     return fig
 
 def create_tactic_performance_chart(marketing_df):
-    """Create tactic performance analysis"""
+    """Create enhanced tactic performance analysis with better visualization"""
     tactic_metrics = marketing_df.groupby(['platform', 'tactic']).agg({
         'spend': 'sum',
         'attributed revenue': 'sum',
@@ -217,21 +310,115 @@ def create_tactic_performance_chart(marketing_df):
         'clicks': 'sum'
     }).reset_index()
     
-    tactic_metrics['roas'] = (tactic_metrics['attributed revenue'] / tactic_metrics['spend']).round(2)
     tactic_metrics['ctr'] = (tactic_metrics['clicks'] / tactic_metrics['impression'] * 100).round(2)
+    tactic_metrics['cpc'] = (tactic_metrics['spend'] / tactic_metrics['clicks']).round(2)
+    tactic_metrics['efficiency'] = (tactic_metrics['attributed revenue'] / tactic_metrics['impression'] * 1000).round(2)
+    tactic_metrics['tactic_platform'] = tactic_metrics['tactic'] + ' (' + tactic_metrics['platform'] + ')'
     
-    fig = px.scatter(
-        tactic_metrics,
-        x='spend',
-        y='attributed revenue',
-        size='ctr',
-        color='roas',
-        hover_data=['platform', 'tactic', 'roas', 'ctr'],
-        title="Tactic Performance: Spend vs Revenue (Bubble size = CTR, Color = ROAS)",
-        labels={'spend': 'Spend ($)', 'attributed revenue': 'Attributed Revenue ($)'}
+    # Create subplots
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=('💡 Tactic Performance Matrix', '📊 Top Performing Tactics'),
+        specs=[[{"type": "scatter"}, {"type": "bar"}]],
+        horizontal_spacing=0.25
     )
     
-    fig.update_layout(height=500)
+    # Bubble chart: Spend vs Revenue with CTR as size and CPC as color
+    fig.add_trace(
+        go.Scatter(
+            x=tactic_metrics['spend'],
+            y=tactic_metrics['attributed revenue'],
+            mode='markers+text',
+            text=tactic_metrics['tactic_platform'],
+            textposition='top center',
+            marker=dict(
+                size=tactic_metrics['ctr'] * 6,
+                color=tactic_metrics['cpc'],
+                colorscale='Blues',
+                showscale=True,
+                colorbar=dict(title="CPC ($)", x=0.42, len=0.6),
+                sizemode='diameter',
+                sizemin=8,
+                sizeref=3,
+                line=dict(width=1, color='white')
+            ),
+            hovertemplate='<b>%{text}</b><br>Spend: $%{x:,.0f}<br>Revenue: $%{y:,.0f}<br>CPC: $%{marker.color:.2f}<br>CTR: %{marker.size:.1f}%<extra></extra>',
+            name='Tactic Performance'
+        ),
+        row=1, col=1
+    )
+    
+    # Bar chart: Top 8 tactics by CTR
+    top_tactics = tactic_metrics.nlargest(8, 'ctr')
+    fig.add_trace(
+        go.Bar(
+            x=top_tactics['ctr'],
+            y=top_tactics['tactic_platform'],
+            orientation='h',
+            marker=dict(
+                color=top_tactics['ctr'],
+                colorscale='Blues',
+                showscale=False
+            ),
+            hovertemplate='<b>%{y}</b><br>CTR: %{x:.2f}%<br>Spend: $%{customdata[0]:,.0f}<br>Revenue: $%{customdata[1]:,.0f}<extra></extra>',
+            customdata=top_tactics[['spend', 'attributed revenue']],
+            name='Top Tactics'
+        ),
+        row=1, col=2
+    )
+    
+    # Update layout
+    fig.update_layout(
+        height=600,
+        showlegend=False,
+        plot_bgcolor='#334155',
+        paper_bgcolor='#334155',
+        font=dict(color='#f1f5f9', size=12),
+        title=dict(
+            text="🎯 Tactic Performance Analysis",
+            font=dict(size=18, color='#f1f5f9'),
+            x=0.5,
+            y=0.98
+        ),
+        margin=dict(l=50, r=50, t=80, b=50)
+    )
+    
+    # Update axes for scatter plot
+    fig.update_xaxes(
+        title_text="Spend ($)",
+        title_font=dict(color='#cbd5e1'),
+        tickfont=dict(color='#94a3b8'),
+        gridcolor='#475569',
+        showgrid=True,
+        row=1, col=1
+    )
+    fig.update_yaxes(
+        title_text="Attributed Revenue ($)",
+        title_font=dict(color='#cbd5e1'),
+        tickfont=dict(color='#94a3b8'),
+        gridcolor='#475569',
+        showgrid=True,
+        row=1, col=1
+    )
+    
+    # Update axes for bar chart
+    fig.update_xaxes(
+        title_text="CTR (%)",
+        title_font=dict(color='#cbd5e1'),
+        tickfont=dict(color='#94a3b8'),
+        gridcolor='#475569',
+        showgrid=True,
+        row=1, col=2
+    )
+    fig.update_yaxes(
+        title_text="Tactic (Platform)",
+        title_font=dict(color='#cbd5e1'),
+        tickfont=dict(color='#94a3b8'),
+        gridcolor='#475569',
+        showgrid=True,
+        row=1, col=2
+    )
+    
     return fig
 
 def create_geographic_analysis(marketing_df):
@@ -243,15 +430,15 @@ def create_geographic_analysis(marketing_df):
         'clicks': 'sum'
     }).reset_index()
     
-    geo_metrics['roas'] = (geo_metrics['attributed revenue'] / geo_metrics['spend']).round(2)
     geo_metrics['ctr'] = (geo_metrics['clicks'] / geo_metrics['impression'] * 100).round(2)
+    geo_metrics['cpc'] = (geo_metrics['spend'] / geo_metrics['clicks']).round(2)
     
     fig = px.bar(
         geo_metrics,
         x='platform',
-        y='roas',
+        y='ctr',
         color='state',
-        title="ROAS by Platform and State",
+        title="CTR by Platform and State",
         barmode='group'
     )
     
@@ -268,7 +455,6 @@ def create_state_wise_analysis(marketing_df):
         'platform': 'nunique'
     }).reset_index()
     
-    state_metrics['roas'] = (state_metrics['attributed revenue'] / state_metrics['spend']).round(2)
     state_metrics['ctr'] = (state_metrics['clicks'] / state_metrics['impression'] * 100).round(2)
     state_metrics['cpc'] = (state_metrics['spend'] / state_metrics['clicks']).round(2)
     state_metrics['cpm'] = (state_metrics['spend'] / state_metrics['impression'] * 1000).round(2)
@@ -279,7 +465,7 @@ def create_state_performance_chart(state_metrics):
     """Create state performance comparison chart"""
     fig = make_subplots(
         rows=2, cols=2,
-        subplot_titles=('Revenue by State', 'Spend by State', 'ROAS by State', 'CTR by State'),
+        subplot_titles=('Revenue by State', 'Spend by State', 'CTR by State', 'CPC by State'),
         specs=[[{"type": "bar"}, {"type": "bar"}],
                [{"type": "bar"}, {"type": "bar"}]]
     )
@@ -298,17 +484,17 @@ def create_state_performance_chart(state_metrics):
         row=1, col=2
     )
     
-    # ROAS
-    fig.add_trace(
-        go.Bar(x=state_metrics['state'], y=state_metrics['roas'], 
-               name='ROAS', marker_color='#2ca02c'),
-        row=2, col=1
-    )
-    
     # CTR
     fig.add_trace(
         go.Bar(x=state_metrics['state'], y=state_metrics['ctr'], 
-               name='CTR', marker_color='#d62728'),
+               name='CTR', marker_color='#2ca02c'),
+        row=2, col=1
+    )
+    
+    # CPC
+    fig.add_trace(
+        go.Bar(x=state_metrics['state'], y=state_metrics['cpc'], 
+               name='CPC', marker_color='#d62728'),
         row=2, col=2
     )
     
@@ -317,8 +503,8 @@ def create_state_performance_chart(state_metrics):
     fig.update_xaxes(title_text="State", row=2, col=2)
     fig.update_yaxes(title_text="Revenue ($)", row=1, col=1)
     fig.update_yaxes(title_text="Spend ($)", row=1, col=2)
-    fig.update_yaxes(title_text="ROAS", row=2, col=1)
-    fig.update_yaxes(title_text="CTR (%)", row=2, col=2)
+    fig.update_yaxes(title_text="CTR (%)", row=2, col=1)
+    fig.update_yaxes(title_text="CPC ($)", row=2, col=2)
     
     return fig
 
@@ -326,20 +512,22 @@ def create_state_platform_breakdown(marketing_df):
     """Create state-platform breakdown heatmap"""
     state_platform = marketing_df.groupby(['state', 'platform']).agg({
         'spend': 'sum',
-        'attributed revenue': 'sum'
+        'attributed revenue': 'sum',
+        'impression': 'sum',
+        'clicks': 'sum'
     }).reset_index()
     
-    state_platform['roas'] = (state_platform['attributed revenue'] / state_platform['spend']).round(2)
+    state_platform['ctr'] = (state_platform['clicks'] / state_platform['impression'] * 100).round(2)
     
     # Create pivot table for heatmap
-    pivot_roas = state_platform.pivot(index='state', columns='platform', values='roas').fillna(0)
+    pivot_ctr = state_platform.pivot(index='state', columns='platform', values='ctr').fillna(0)
     
     fig = px.imshow(
-        pivot_roas,
+        pivot_ctr,
         text_auto=True,
         aspect="auto",
-        title="ROAS Heatmap: State vs Platform",
-        color_continuous_scale='RdYlGn'
+        title="CTR Heatmap: State vs Platform",
+        color_continuous_scale='Blues'
     )
     
     fig.update_layout(height=400)
@@ -354,8 +542,8 @@ def create_campaign_analysis(marketing_df):
         'clicks': 'sum'
     }).reset_index()
     
-    campaign_metrics['roas'] = (campaign_metrics['attributed revenue'] / campaign_metrics['spend']).round(2)
     campaign_metrics['ctr'] = (campaign_metrics['clicks'] / campaign_metrics['impression'] * 100).round(2)
+    campaign_metrics['cpc'] = (campaign_metrics['spend'] / campaign_metrics['clicks']).round(2)
     
     # Top 10 campaigns by revenue
     top_campaigns = campaign_metrics.nlargest(10, 'attributed revenue')
@@ -364,7 +552,7 @@ def create_campaign_analysis(marketing_df):
         top_campaigns,
         x='attributed revenue',
         y='campaign',
-        color='roas',
+        color='ctr',
         title="Top 10 Campaigns by Revenue",
         labels={'attributed revenue': 'Attributed Revenue ($)', 'campaign': 'Campaign'}
     )
@@ -376,7 +564,7 @@ def create_correlation_analysis(combined_df):
     """Create correlation analysis between marketing and business metrics"""
     # Select numeric columns for correlation
     numeric_cols = ['total revenue', 'gross profit', '# of orders', 'new customers', 
-                   'spend', 'attributed revenue', 'impression', 'clicks', 'ctr', 'cpc', 'roas']
+                   'spend', 'attributed revenue', 'impression', 'clicks', 'ctr', 'cpc']
     
     corr_data = combined_df[numeric_cols].corr()
     
@@ -488,19 +676,19 @@ def main():
         )
     
     with col2:
-        best_state_roas = state_metrics.loc[state_metrics['roas'].idxmax()]
+        best_state_ctr = state_metrics.loc[state_metrics['ctr'].idxmax()]
         st.metric(
-            label="📈 Best ROAS State",
-            value=best_state_roas['state'],
-            delta=f"{best_state_roas['roas']:.2f}x"
+            label="📈 Best CTR State",
+            value=best_state_ctr['state'],
+            delta=f"{best_state_ctr['ctr']:.2f}%"
         )
     
     with col3:
-        best_state_ctr = state_metrics.loc[state_metrics['ctr'].idxmax()]
+        best_state_cpc = state_metrics.loc[state_metrics['cpc'].idxmin()]
         st.metric(
-            label="🎯 Best CTR State",
-            value=best_state_ctr['state'],
-            delta=f"{best_state_ctr['ctr']:.2f}%"
+            label="💰 Best CPC State",
+            value=best_state_cpc['state'],
+            delta=f"${best_state_cpc['cpc']:.2f}"
         )
     
     with col4:
@@ -554,15 +742,15 @@ def main():
     with tab2:
         st.dataframe(marketing_df[['date', 'platform', 'tactic', 'state', 'campaign', 
                                   'impression', 'clicks', 'spend', 'attributed revenue', 
-                                  'ctr', 'cpc', 'roas']].round(2))
+                                  'ctr', 'cpc']].round(2))
     
     with tab3:
         st.dataframe(state_metrics[['state', 'spend', 'attributed revenue', 'impression', 
-                                   'clicks', 'roas', 'ctr', 'cpc', 'cpm', 'platform']].round(2))
+                                   'clicks', 'ctr', 'cpc', 'cpm', 'platform']].round(2))
     
     with tab4:
         st.dataframe(combined_df[['date', 'total revenue', 'spend', 'attributed revenue', 
-                                 'roas', 'ctr', 'marketing_attribution_rate', 
+                                 'ctr', 'cpc', 'marketing_attribution_rate', 
                                  'customer_acquisition_cost']].round(2))
     
     # Footer
